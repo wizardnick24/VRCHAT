@@ -1,0 +1,115 @@
+Concept Overview
+
+You have:
+
+Audio Player A (e.g., a stream from URL type 1)
+
+Audio Player B (e.g., a stream from URL type 2)
+
+Goal:
+
+If A produces audio → mute B, play A.
+
+If A fails → fallback to B.
+
+If B also fails → loop or silence until one becomes available.
+
+How to Detect “Audio Present”
+
+In Udon/UdonSharp, the standard way:
+
+if(audioSource.isPlaying && audioSource.time > 0f)
+{
+    // Audio is active
+}
+
+
+audioSource.isPlaying alone can be unreliable for streams.
+
+audioSource.time > 0f ensures that actual playback started.
+
+You can also check volume meters or send the AudioSource into an AudioReactive component: if audio levels > 0, it’s live.
+
+Implementation Logic
+
+Pseudo-UdonSharp:
+
+AudioSource playerA;
+AudioSource playerB;
+
+void Update()
+{
+    bool aPlaying = playerA.isPlaying && playerA.time > 0f;
+    bool bPlaying = playerB.isPlaying && playerB.time > 0f;
+
+    if(aPlaying)
+    {
+        // A is active, B should be muted
+        playerB.mute = true;
+        playerA.mute = false;
+    }
+    else if(bPlaying)
+    {
+        // B is active, A should be muted
+        playerA.mute = true;
+        playerB.mute = false;
+    }
+    else
+    {
+        // Neither active, optimistic load both
+        TryPlay(playerA);
+        TryPlay(playerB);
+    }
+}
+
+void TryPlay(AudioSource source)
+{
+    if(!source.isPlaying)
+    {
+        source.Play();
+    }
+}
+
+
+Notes:
+
+You can set this Update() check to run every 1–2 seconds instead of every frame to save performance.
+
+Optional: show a visual “Offline / Online” indicator using the same check.
+
+You could even fade between players for smoother transitions.
+
+Optional Enhancements
+
+Different player types
+
+Player A = AudioStream (URL from web)
+
+Player B = Local clip or another streaming format
+→ Same logic works as long as you check isPlaying.
+
+Audio-Reactive Shaders
+
+Just link to whichever player is active (or sum both for continuity).
+
+Avoid feeding a muted AudioSource into the shaders to prevent weird visuals.
+
+Retry Timing
+
+Don’t spam Play(). Retry every few seconds per player.
+
+Works better if streams are intermittent.
+
+This setup effectively gives you:
+
+Failover between two streams
+
+Automatic swapping
+
+Optional audio-reactive visuals
+
+No pre-check required, just optimistic load
+
+If you want, I can draw a complete VRChat-friendly diagram showing both audio players, retry logic, mute switching, and shader hooks—so you can plug it directly into your world.
+
+Do you want me to do that?
